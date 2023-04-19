@@ -18,7 +18,6 @@ using System.Xml.Linq;
 using System.IO;
 using System.IO.Pipes;
 using System.Windows.Controls.Primitives;
-using CommandLibrary;
 using System.Runtime.CompilerServices;
 using System.Collections;
 using System.Reflection;
@@ -26,6 +25,7 @@ using System.Security.Cryptography;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Media3D;
 using System.Data;
+using System.Diagnostics;
 
 namespace ConsoleWindow {
 
@@ -35,6 +35,7 @@ namespace ConsoleWindow {
         private static readonly string pipeName = "ContentPipe"; // Do not change unless you change the dll assembly!
         private static NamedPipeClientStream pipeClient;
         private static DispatcherTimer timer;
+        private static TimeSpan intervall = TimeSpan.FromMilliseconds(200);
         private static StreamReader reader;
 
         private static double optionHeight = 22;
@@ -53,11 +54,12 @@ namespace ConsoleWindow {
         private static DropDownMenu editMenu;
         private static DropDownMenu windowMenu;
 
-        // Set False to activate the Piping system
-        private static bool DEVELOPMENT_ = true;
+        public static ProgramRunType runType = ProgramRunType.StandAlone;
 
 
         public MainWindow() {
+            /// Application.Current.Startup += Current_Startup;
+
             InitializeComponent();
             WindowChrome.SetWindowChrome(this, new WindowChrome());
 
@@ -69,12 +71,32 @@ namespace ConsoleWindow {
                 MigrateWinResourcesToAppResources();
                 CreateMainConsole();
                 GenerateClientbuttonMenus();
+
+                Current_Startup();
+
+                if (runType == ProgramRunType.DebugLibrary) {
+                    StartTimer_();
+                }
             };
+        }
 
-
-            if (DEVELOPMENT_ == false) {
-                StartTimer_();
+        private void Current_Startup() { /// object sender, StartupEventArgs e
+            // Read the startupInformation
+            string path = "startArguments.txt";
+            if (!File.Exists(path)) {
+                return;
             }
+            /// MainConsole.WriteLine($"'{path}' was found.");
+
+            string argument = File.ReadAllText(path);
+            File.Delete(path);
+            MainConsole.WriteLine(argument);
+
+            if (argument == "DebugLibrary") {
+                MainConsole.WriteLine("Started console through DebugLibrary.");
+                runType = ProgramRunType.DebugLibrary;
+            }
+
         }
 
         private static void MigrateWinResourcesToAppResources() {
@@ -176,57 +198,45 @@ namespace ConsoleWindow {
             reader = new StreamReader(pipeClient);
 
             //declare executionSymbol
-            try {
-                executionSymbol = reader.ReadLine();
-            }
-            catch (Exception e) {
-
-            }
+            executionSymbol = reader.ReadLine();
 
             timer = new DispatcherTimer();
-            timer.Interval = TimeSpan.FromMilliseconds(100);
+            timer.Interval = intervall;
             timer.Tick += async (sender, e) => {
-                try {
-                    // Empty the Pipe
-                    string message = await reader.ReadLineAsync();
-                    while (message != null) {
-                        // Check for xMessage
-                        if (message.Contains(executionSymbol)) {
-                            string executionMessage = "";
-                            string parameter = "";
-                            // Find the indexes of the two instances of executionSymbol
-                            int startIndex = message.IndexOf(executionSymbol, 0);
-                            int endIndex = message.IndexOf(executionSymbol, startIndex + executionSymbol.Length);
+                // Empty the Pipe
+                string message = await reader.ReadLineAsync();
+                while (message != null) {
+                    // Check for xMessage
+                    if (message.Contains(executionSymbol)) {
+                        string executionMessage = "";
+                        string parameter = "";
+                        // Find the indexes of the two instances of executionSymbol
+                        int startIndex = message.IndexOf(executionSymbol, 0);
+                        int endIndex = message.IndexOf(executionSymbol, startIndex + executionSymbol.Length);
 
-                            // If both instances of executionSymbol were found, extract the executionMessage between them
-                            if (startIndex >= 0 && endIndex > startIndex) {
-                                executionMessage = message.Substring(startIndex + executionSymbol.Length, endIndex - startIndex - executionSymbol.Length);
-                                parameter = message.Substring(endIndex + executionSymbol.Length, message.Length - (2 * executionSymbol.Length) - executionMessage.Length);
-                            }
-                            else {
-                                break;
-                            }
-                            // Extract the parameter
-
-                            // Execute the executionMessage command
-                            Execute(executionMessage, parameter);
+                        // If both instances of executionSymbol were found, extract the executionMessage between them
+                        if (startIndex >= 0 && endIndex > startIndex) {
+                            executionMessage = message.Substring(startIndex + executionSymbol.Length, endIndex - startIndex - executionSymbol.Length);
+                            parameter = message.Substring(endIndex + executionSymbol.Length, message.Length - (2 * executionSymbol.Length) - executionMessage.Length);
                         }
                         else {
-                            // Print out the message on a new line
-                            MainConsole.WriteLine(message);
-                            MainConsole.ScrollToEnd();
+                            break;
                         }
+                        // Extract the parameter
 
-                        // Get next message for next iteration
-                        message = await reader.ReadLineAsync();
+                        // Execute the executionMessage command
+                        Execute(executionMessage, parameter);
+                    }
+                    else {
+                        // Print out the message on a new line
+                        MainConsole.WriteLine(message);
+                        MainConsole.ScrollToEnd();
                     }
 
-
-
+                    // Get next message for next iteration
+                    message = await reader.ReadLineAsync();
                 }
-                catch (Exception e1) {
 
-                }
             };
             timer.Start();
 
@@ -262,7 +272,7 @@ namespace ConsoleWindow {
         /// </summary>
         /// <exception cref="ArgumentException"></exception>
         private void ShutDown() {
-            if (DEVELOPMENT_ == false) {
+            if (runType == ProgramRunType.DebugLibrary) {
                 try {
                     timer.Stop();
                     pipeClient.Close();
@@ -273,7 +283,6 @@ namespace ConsoleWindow {
                     throw new ArgumentException($"An Error occured while trying to shut down the ConsoleWindowApplication: {ex}");
                 }
             }
-
 
             Application.Current.Shutdown();
         }
@@ -1110,5 +1119,10 @@ namespace ConsoleWindow {
             }
         }
 
+    }
+
+    public enum ProgramRunType {
+        DebugLibrary,
+        StandAlone
     }
 }

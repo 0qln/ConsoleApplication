@@ -17,4 +17,11 @@
     </Reference>
   </ItemGroup>
 
+	<ItemGroup>
+		<Content Update="\startArguments.txt">
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+		</Content>
+	</ItemGroup>
+
 </Project>
