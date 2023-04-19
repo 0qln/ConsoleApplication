@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net7.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWPF>true</UseWPF>
+	<IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+	<PublishSingleFile>true</PublishSingleFile>
+	<SelfContained>true</SelfContained>
+	<RuntimeIdentifier>win-x64</RuntimeIdentifier>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="CommandLibrary">
+      <HintPath>..\..\..\..\Github\Projects\CommandLibrary\CommandLibrary\bin\Debug\net7.0\CommandLibrary.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>
