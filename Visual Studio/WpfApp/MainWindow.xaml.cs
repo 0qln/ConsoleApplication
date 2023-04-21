@@ -26,6 +26,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Media.Media3D;
 using System.Data;
 using System.Diagnostics;
+using System.Security.Policy;
 
 namespace ConsoleWindow {
 
@@ -58,8 +59,6 @@ namespace ConsoleWindow {
 
 
         public MainWindow() {
-            /// Application.Current.Startup += Current_Startup;
-
             InitializeComponent();
             WindowChrome.SetWindowChrome(this, new WindowChrome());
 
@@ -72,31 +71,30 @@ namespace ConsoleWindow {
                 CreateMainConsole();
                 GenerateClientbuttonMenus();
 
-                Current_Startup();
+                ApplicationStartup();
+                MainConsole.WriteLine($"Started ConsoleApplication as Type: {runType}.");
 
-                if (runType == ProgramRunType.DebugLibrary) {
-                    StartTimer_();
-                }
+                if (runType == ProgramRunType.DebugLibrary) StartTimer_();
             };
         }
 
-        private void Current_Startup() { /// object sender, StartupEventArgs e
+        private string ApplicationDirectory => System.IO.Path.GetDirectoryName(Process.GetCurrentProcess().MainModule.FileName);
+
+        private void ApplicationStartup() {
             // Read the startupInformation
-            string path = "startArguments.txt";
+            string path = ApplicationDirectory + "\\startArguments.txt";
             if (!File.Exists(path)) {
+                //MainConsole.WriteLine($"'{path}' was not found.");
                 return;
             }
-            /// MainConsole.WriteLine($"'{path}' was found.");
+            //MainConsole.WriteLine($"'{path}' was found.");
 
             string argument = File.ReadAllText(path);
             File.Delete(path);
-            MainConsole.WriteLine(argument);
 
             if (argument == "DebugLibrary") {
-                MainConsole.WriteLine("Started console through DebugLibrary.");
                 runType = ProgramRunType.DebugLibrary;
             }
-
         }
 
         private static void MigrateWinResourcesToAppResources() {
@@ -131,9 +129,10 @@ namespace ConsoleWindow {
             Grid.SetRow(newConsole.UIElement, ParentGrid.RowDefinitions.Count - 1);
             Grid.SetColumn(newConsole.UIElement, ParentGrid.ColumnDefinitions.Count - 1);
 
-            newConsole.WriteLine("Hello World!");
             MainConsole = newConsole;
             consoles.Add(newConsole);
+
+            
         }
 
         private void GenerateClientbuttonMenus() {
@@ -550,7 +549,7 @@ namespace ConsoleWindow {
                 border.BorderThickness = new Thickness(1);
                 border.CornerRadius = new CornerRadius(0);
 
-                text.UIElement.Loaded += scrollbar.AdjustSlider;
+                text.UIElement.LayoutUpdated += scrollbar.AdjustSlider;
             }
             private void InitGrid() {
                 //TopGrid
@@ -918,14 +917,6 @@ namespace ConsoleWindow {
 
                         textBox.UIElement.ScrollToLine(newLineIndex);
                     }
-
-                    //consoles[0].Text = "mousePos: " + mousePos.ToString() + "\n";
-                    //WriteLineOnConsoleOfIndex(0, "newY: " + newY);
-                    //WriteLineOnConsoleOfIndex(0, "Delta: " + mousePosDelta);
-                    //WriteLineOnConsoleOfIndex(0, "minHeight: " + minHeight);
-                    //WriteLineOnConsoleOfIndex(0, "maxHeight: " + maxHeight);
-                    //WriteLineOnConsoleOfIndex(0, "newLineIndex: " + newLineIndex);
-                    //WriteLineOnConsoleOfIndex(0, ConsoleBox.GetFirstVisibleLineIndex() + ", " + ConsoleBox.GetLastVisibleLineIndex());
                 }
                 public void AdjustSlider() {
                     double visLines = textBox.VisibleLines;
@@ -945,21 +936,7 @@ namespace ConsoleWindow {
                     }
                 }
                 public void AdjustSlider(object sender, EventArgs e) {
-                    double visLines = textBox.VisibleLines;
-                    double totalLines = textBox.UIElement.LineCount;
-                    double scrollBarHeight = grid.RowDefinitions[1].ActualHeight;
-                    double newHeight = scrollBarHeight * (visLines / totalLines);
-                    if (totalLines < visLines) {
-                        newHeight = scrollBarHeight;
-                    }
-                    slider.Height = newHeight;
-
-                    if (!isScrolling) {
-                        double newLineIndex = textBox.UIElement.GetFirstVisibleLineIndex();
-                        double maxHeight = grid.RowDefinitions.ElementAt(1).ActualHeight;
-                        double newY = ((newLineIndex / textBox.UIElement.LineCount) * maxHeight);
-                        slider.Margin = new Thickness(0, newY, 0, 0);
-                    }
+                    AdjustSlider();
                 }
             }
         }
