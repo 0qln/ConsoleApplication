@@ -127,7 +127,6 @@ namespace ConsoleWindow {
         }
 
         private void CreateMainConsole() {
-
             // Safely Create a new ConsoleWindow
             ConsoleWindow newConsole = new ConsoleWindow(arrowButton_size);
             newConsole.AddQuickSettings(qSettingsHeight);
@@ -138,8 +137,21 @@ namespace ConsoleWindow {
 
             MainConsole = newConsole;
             consoles.Add(newConsole);
+        }
+        private void CreateNewConsole() {
+            // Safely Create a new ConsoleWindow
+            ConsoleWindow newConsole = new ConsoleWindow(arrowButton_size);
+            newConsole.AddQuickSettings(qSettingsHeight);
 
-            
+            ParentGrid.Children.Add(newConsole.UIElement);
+            RowDefinition rowDefinition = new RowDefinition();
+            rowDefinition.Height = new GridLength(100);
+            ParentGrid.RowDefinitions.Add(rowDefinition);
+
+            Grid.SetRow(newConsole.UIElement, ParentGrid.RowDefinitions.Count - 1);
+            Grid.SetColumn(newConsole.UIElement, ParentGrid.ColumnDefinitions.Count - 1);
+
+            consoles.Add(newConsole);
         }
 
         private void GenerateClientbuttonMenus() {
@@ -167,7 +179,7 @@ namespace ConsoleWindow {
             viewMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight).SetName("Increase Font Size").SetKeyboardShortcut("Strg + Mousewheel Up").AddCommand(MainConsole.IncreaseConsoleFont));
             viewMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight).SetName("Decrease Font Size").SetKeyboardShortcut("Strg + Mousewheel Down").AddCommand(MainConsole.DecreaseConsoleFont));
             editMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight).SetName("Search and Replace").SetKeyboardShortcut("Strg + F"));
-            windowMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight).SetName("Add new Console").SetKeyboardShortcut("Strg + N"));
+            windowMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight).SetName("Add new Console").SetKeyboardShortcut("Strg + N").AddCommand(CreateNewConsole));
 
 
             // Second degree
@@ -569,7 +581,7 @@ namespace ConsoleWindow {
                 InitGrid();
 
                 border.Child = parentGrid;
-                border.BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#707070"));
+                border.BorderBrush = Helper.Color("#707070");
                 border.BorderThickness = new Thickness(1);
                 border.CornerRadius = new CornerRadius(0);
             }
@@ -758,7 +770,7 @@ namespace ConsoleWindow {
                     console.scrollbar.AdjustSlider();
                 }
 
-                public int VisibleLines => textBox.GetLastVisibleLineIndex() - textBox.GetFirstVisibleLineIndex();
+                public int VisibleLines => 1 + textBox.GetLastVisibleLineIndex() - textBox.GetFirstVisibleLineIndex(); 
             }
 
             class ConsoleScrollbar {
@@ -797,7 +809,7 @@ namespace ConsoleWindow {
 
                     slider.HorizontalAlignment = HorizontalAlignment.Center;
                     slider.VerticalAlignment = VerticalAlignment.Top;
-                    slider.Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#3d3d3d"));
+                    slider.Fill = Helper.Color("#2e2e2e");
                     slider.MouseLeftButtonDown += Slider_MouseLeftButtonDown;
                     slider.MouseLeftButtonUp += Slider_MouseLeftButtonUp;
                     slider.Width = arrowWidth;
