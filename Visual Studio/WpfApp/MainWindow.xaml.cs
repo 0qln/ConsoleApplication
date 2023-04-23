@@ -29,6 +29,8 @@ using System.Diagnostics;
 using System.Security.Policy;
 using Microsoft.VisualBasic.FileIO;
 using System.Threading;
+using System.Reflection.Metadata;
+using Microsoft.Win32;
 
 namespace ConsoleWindow {
 
@@ -174,8 +176,8 @@ namespace ConsoleWindow {
             }
 
             // Adding settings
-            fileMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight).SetName("Load").SetKeyboardShortcut("Strg + O"));
-            fileMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight).SetName("Safe").SetKeyboardShortcut("Strg + S"));
+            fileMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight).SetName("Load"));
+            fileMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight).SetName("Safe"));
             viewMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight).SetName("Increase Font Size").SetKeyboardShortcut("Strg + Mousewheel Up").AddCommand(MainConsole.IncreaseConsoleFont));
             viewMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight).SetName("Decrease Font Size").SetKeyboardShortcut("Strg + Mousewheel Down").AddCommand(MainConsole.DecreaseConsoleFont));
             editMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight).SetName("Search and Replace").SetKeyboardShortcut("Strg + F"));
@@ -197,13 +199,11 @@ namespace ConsoleWindow {
             }
 
             // Adding settings
-            saveMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight).SetName("Save to default file").SetKeyboardShortcut("Strg + S + D"));
-            saveMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight).SetName("Save to specific file").SetKeyboardShortcut("Strg + S + F"));
-            fileMenu.GetOption("Safe").AddCommand(saveMenu.ToggleVisibility);
-
-
-            // Collapse all menus
-            ///DeactivateAllClientButtons();
+            saveMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight).SetName("Save to default file").SetKeyboardShortcut("Strg + S + D").AddCommand(MainConsole.SaveDefault));
+            saveMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight).SetName("Save to specific file").SetKeyboardShortcut("Strg + S + F").AddCommand(MainConsole.SaveSpecific));
+            loadMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight).SetName("Load from default file").SetKeyboardShortcut("Strg + O + D").AddCommand(MainConsole.Load));
+            fileMenu.GetOption("Safe").AddDropdownMenu(saveMenu);
+            fileMenu.GetOption("Load").AddDropdownMenu(loadMenu);
         }
 
         private void PrepareUIElements() {
@@ -223,6 +223,8 @@ namespace ConsoleWindow {
         }
 
         #region System
+
+
         /// <summary>
         /// kein plan warum das funktioniert
         /// DONT CHANGE!!!
@@ -323,6 +325,36 @@ namespace ConsoleWindow {
             }
 
             Application.Current.Shutdown();
+        }
+
+        public string ShowFolderPickerDialog() {
+            var openFileDialog = new OpenFileDialog {
+                Title = "Select a folder",
+                Filter = "Folders|*.000|All Files|*.*",
+                FileName = "Folder Selection",
+                CheckFileExists = false,
+                CheckPathExists = true,
+                ReadOnlyChecked = true,
+                Multiselect = false,
+                ValidateNames = false,
+                DereferenceLinks = true,
+                ShowReadOnly = false,
+                AddExtension = false,
+                RestoreDirectory = true,
+                InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
+                CustomPlaces = null,
+            };
+
+            // Set the FolderPicker option
+            openFileDialog.ShowDialog(this);
+
+            // Get the selected folder path
+            string selectedFolderPath = System.IO.Path.GetDirectoryName(openFileDialog.FileName);
+            if (selectedFolderPath != null && Directory.Exists(selectedFolderPath)) {
+                return selectedFolderPath;
+            }
+
+            return null;
         }
         #endregion
 
@@ -563,6 +595,8 @@ namespace ConsoleWindow {
             private Border border = new Border();
             public UIElement UIElement => border;
 
+            public string defaultPath = null;
+
             private List<string> content = new List<string>();
             private Grid parentGrid = new Grid();
             private Grid topGrid = new Grid();
@@ -684,6 +718,39 @@ namespace ConsoleWindow {
                     }
                     return b.ToString();
                 }
+            }
+
+            public void SaveDefault() {
+                if (defaultPath == null) {
+                    MessageBox.Show("No default path has been selected.");
+                }
+
+                File.WriteAllLines(defaultPath, content);
+            }
+            public void SaveSpecific() {
+                try {
+                    string selectedFolderPath = ((MainWindow)Application.Current.MainWindow).ShowFolderPickerDialog();
+                    if (selectedFolderPath != null) {
+                        string filename = selectedFolderPath + "\\log.txt";
+                        using (FileStream stream = File.Create(filename)) {
+                            stream.Close();
+                        }
+                        File.WriteAllLines(filename, content);
+                    }
+                }
+                catch (Exception e) {
+                    WriteLine(e.ToString());
+                }
+            }
+
+            public void Load() {
+                Load(defaultPath);
+            }
+            public void Load(string filename) {
+                if (filename == null) throw new ArgumentException("Filename was null.");
+                if (!File.Exists(filename)) throw new ArgumentException("File does not exist.");
+
+                content = File.ReadAllLines(filename).ToList();
             }
 
             /// <summary>
@@ -1135,6 +1202,7 @@ namespace ConsoleWindow {
                     arrow.Margin = new Thickness(15, 0, 0, 0);
                     arrow.Text = ">";
                     arrow.Foreground = Brushes.White;
+                    AddCommand(menu.ToggleVisibility);
 
                     this.menu = menu;
 
