@@ -81,10 +81,14 @@ namespace ConsoleWindow {
                 CreateMainConsole();
                 GenerateClientbuttonMenus();
 
-                ApplicationStartup();
-                MainConsole.WriteLine($"Started ConsoleApplication as Type: {runType}.");
-                if (runType == ProgramRunType.DebugLibrary) StartTimer_();
-
+                try {
+                    ApplicationStartup();
+                    MainConsole.WriteLine($"Started ConsoleApplication as Type: {runType}.");
+                    if (runType == ProgramRunType.DebugLibrary) StartTimer_();
+                }
+                catch (Exception ex) {
+                    MainConsole.WriteLine(ex.ToString());
+                }
             };
         }
 
@@ -99,7 +103,10 @@ namespace ConsoleWindow {
             }
             //MainConsole.WriteLine($"'{path}' was found.");
 
-            string argument = File.ReadAllText(path);
+            string argument = "";
+            using (StreamReader reader = new StreamReader(path)) {
+                argument = File.ReadAllText(path);
+            }
             File.Delete(path);
 
             if (argument == "DebugLibrary") {
@@ -225,10 +232,6 @@ namespace ConsoleWindow {
         #region System
 
 
-        /// <summary>
-        /// kein plan warum das funktioniert
-        /// DONT CHANGE!!!
-        /// </summary>
         private void StartTimer_() {
             // Initiate the PipeClient
             pipeClient = new NamedPipeClientStream(".", pipeName, PipeDirection.In);
@@ -240,46 +243,57 @@ namespace ConsoleWindow {
             //declare executionSymbol
             executionSymbol = reader.ReadLine();
 
+            bool reading = false;
             timer = new DispatcherTimer();
             timer.Interval = intervall;
             timer.Tick += async (sender, e) => {
-                // Empty the Pipe
-                string message = await reader.ReadLineAsync();
-                while (message != null) {
-                    // Check for xMessage
-                    if (message.Contains(executionSymbol)) {
-                        string executionMessage = "";
-                        string parameter = "";
-                        // Find the indexes of the two instances of executionSymbol
-                        int startIndex = message.IndexOf(executionSymbol, 0);
-                        int endIndex = message.IndexOf(executionSymbol, startIndex + executionSymbol.Length);
+                if (reading) {
+                    return;
+                }
+                try {
+                    reading = true;
 
-                        // If both instances of executionSymbol were found, extract the executionMessage between them
-                        if (startIndex >= 0 && endIndex > startIndex) {
-                            executionMessage = message.Substring(startIndex + executionSymbol.Length, endIndex - startIndex - executionSymbol.Length);
-                            parameter = message.Substring(endIndex + executionSymbol.Length, message.Length - (2 * executionSymbol.Length) - executionMessage.Length);
+                    // Empty the Pipe
+                    string message = await reader.ReadLineAsync();
+                    while (message != null) {
+                        // Check for xMessage
+                        if (message.Contains(executionSymbol)) {
+                            string executionMessage = "";
+                            string parameter = "";
+                            // Find the indexes of the two instances of executionSymbol
+                            int startIndex = message.IndexOf(executionSymbol, 0);
+                            int endIndex = message.IndexOf(executionSymbol, startIndex + executionSymbol.Length);
+
+                            // If both instances of executionSymbol were found
+                            if (startIndex >= 0 && endIndex > startIndex) {
+                                // extract the executionMessage between them
+                                executionMessage = message.Substring(startIndex + executionSymbol.Length, endIndex - startIndex - executionSymbol.Length);
+                                // Extract the parameter
+                                parameter = message.Substring(endIndex + executionSymbol.Length, message.Length - (2 * executionSymbol.Length) - executionMessage.Length);
+                                
+                                // Execute the executionMessage command
+                                Execute(executionMessage, parameter);
+                            }
                         }
                         else {
-                            break;
+                            // Print out the message on a new line
+                            MainConsole.WriteLine(message);
+                            MainConsole.ScrollToEnd();
                         }
-                        // Extract the parameter
 
-                        // Execute the executionMessage command
-                        Execute(executionMessage, parameter);
-                    }
-                    else {
-                        // Print out the message on a new line
-                        MainConsole.WriteLine(message);
-                        MainConsole.ScrollToEnd();
+                        // Get next message for next iteration
+                        message = await reader.ReadLineAsync();
                     }
 
-                    // Get next message for next iteration
-                    message = await reader.ReadLineAsync();
+                    reading = false;
                 }
-
+                catch (Exception ex) {
+                    MainConsole.WriteLine("Internal Error while trying to read messages from the PipingSystem: ");
+                    MainConsole.WriteLine(ex.ToString());
+                    MainConsole.ScrollToEnd();
+                }
             };
             timer.Start();
-
         }
         /// <summary>
         /// Executes the <paramref name="command"/>.
