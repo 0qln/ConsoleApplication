@@ -1,3 +1,0 @@
-Occurs only if:
-- Started through WPF
-- Started through DebugLibrary 
