@@ -15,6 +15,9 @@
     <Reference Include="CommandLibrary">
       <HintPath>..\..\..\..\Github\Projects\CommandLibrary\CommandLibrary\bin\Debug\net7.0\CommandLibrary.dll</HintPath>
     </Reference>
+    <Reference Include="WpfCustomControlLibrary1">
+      <HintPath>..\..\..\..\WPF Extensions\Release\WpfCustomControlLibrary1.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
 	<ItemGroup>

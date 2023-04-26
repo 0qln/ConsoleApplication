@@ -31,6 +31,7 @@ using Microsoft.VisualBasic.FileIO;
 using System.Threading;
 using System.Reflection.Metadata;
 using Microsoft.Win32;
+using WpfCustomControls;
 
 namespace ConsoleWindow {
 
@@ -38,63 +39,71 @@ namespace ConsoleWindow {
 
         private static string executionSymbol = "";
         private static readonly string pipeName = "ContentPipe"; // Do not change unless you change the dll assembly!
-        private static NamedPipeClientStream pipeClient;
-        private static DispatcherTimer timer;
-        private static TimeSpan intervall = TimeSpan.FromMilliseconds(200);
-        private static StreamReader reader;
+        private static NamedPipeClientStream ?pipeClient;
+        private static DispatcherTimer timer = new();
+        private static readonly TimeSpan intervall = TimeSpan.FromMilliseconds(200);
+        private static StreamReader ?reader;
 
-        private static double dropDownMenuHeight = 22;
-        private static double maximizedFix = 5;
-        private static double systemButton_size = 30;
-        private static double arrowButton_size = 15;
-        private static double qSettingsHeight = 30;
-        private static (double, double) iconSize = (22, 22);
-        private static double clientButton_size = systemButton_size * (4 / 5);
-        private static List<UIElement> clientButtonUnfoldMenus = new List<UIElement>();
-        private static List<ConsoleWindow> consoles = new List<ConsoleWindow>();
-        private static ConsoleWindow MainConsole;
+        private static readonly double dropDownMenuHeight = 22;
+        private static readonly double maximizedFix = 5;
+        private static readonly double systemButton_size = 30;
+        private static readonly double arrowButton_size = 15;
+        private static readonly double qSettingsHeight = 30;
+        private static readonly (double, double) iconSize = (22, 22);
+        private static readonly List<UIElement> clientButtonUnfoldMenus = new();
+        private static readonly List<ConsoleWindow> consoles = new();
+        private static ConsoleWindow MainConsole = new(arrowButton_size);
 
-        private static DropDownMenu fileMenu;
-        private static DropDownMenu saveMenu;
-        private static DropDownMenu loadMenu;
+        private static WindowHandle windowHandle;
+        private static readonly string iconPath = @"D:\Programmmieren\__DebugLibrary\VSCode\ConsoleWindow\Zeichnung.png";
 
-        private static DropDownMenu viewMenu;
+        private static ProgramRunType runType = ProgramRunType.StandAlone;
 
-        private static DropDownMenu editMenu;
+        private static DropDownMenu fileMenu = new();
+        private static DropDownMenu saveMenu = new();
+        private static DropDownMenu loadMenu = new();
 
-        private static DropDownMenu windowMenu;
+        private static DropDownMenu viewMenu = new();
 
+        private static DropDownMenu editMenu = new();
 
-        public static ProgramRunType runType = ProgramRunType.StandAlone;
+        private static DropDownMenu windowMenu = new();
 
 
         public MainWindow() {
             InitializeComponent();
             WindowChrome.SetWindowChrome(this, new WindowChrome());
 
-            UpdateSystemButtonSize();
-            SetTitleBar();
-            PrepareUIElements();
-
             Loaded += (object sender, RoutedEventArgs e) => {
                 MigrateWinResourcesToAppResources();
                 CreateMainConsole();
+
+                ApplicationStartup();
+                MainConsole.WriteLine($"Started ConsoleApplication as Type: {runType}.");
+                if (runType == ProgramRunType.DebugLibrary) StartTimer_();
+
+
+
+                windowHandle = new WindowHandle(Application.Current)
+                .SetParentWindow(ParentGrid)
+                .AddIcon(iconPath)
+                .CreateClientButton("File", fileMenu)
+                .CreateClientButton("Edit", editMenu)
+                .CreateClientButton("View", viewMenu)
+                .CreateClientButton("Window", windowMenu);
+
                 GenerateClientbuttonMenus();
 
-                try {
-                    ApplicationStartup();
-                    MainConsole.WriteLine($"Started ConsoleApplication as Type: {runType}.");
-                    if (runType == ProgramRunType.DebugLibrary) StartTimer_();
-                }
-                catch (Exception ex) {
-                    MainConsole.WriteLine(ex.ToString());
-                }
+                windowHandle.ActivateAllClientButtons();
+
+                windowHandle.SetWindowChromActiveAll();
             };
         }
 
-        private string ApplicationDirectory => System.IO.Path.GetDirectoryName(Process.GetCurrentProcess().MainModule.FileName);
 
-        private void ApplicationStartup() {
+        private static string ?ApplicationDirectory => System.IO.Path.GetDirectoryName(Environment.ProcessPath);
+
+        private static void ApplicationStartup() {
             // Read the startupInformation
             string path = ApplicationDirectory + "\\startArguments.txt";
             if (!File.Exists(path)) {
@@ -104,7 +113,7 @@ namespace ConsoleWindow {
             //MainConsole.WriteLine($"'{path}' was found.");
 
             string argument = "";
-            using (StreamReader reader = new StreamReader(path)) {
+            using (StreamReader reader = new(path)) {
                 argument = File.ReadAllText(path);
             }
             File.Delete(path);
@@ -118,7 +127,7 @@ namespace ConsoleWindow {
             ResourceDictionary windowResources = Application.Current.MainWindow.Resources;
             foreach (DictionaryEntry entry in windowResources) {
                 if (entry.Value is Style style) {
-                    Style newStyle = new Style(style.TargetType);
+                    Style newStyle = new(style.TargetType);
 
                     // Copy the setters and triggers from the existing style to the new style
                     foreach (SetterBase setter in style.Setters) {
@@ -137,7 +146,7 @@ namespace ConsoleWindow {
 
         private void CreateMainConsole() {
             // Safely Create a new ConsoleWindow
-            ConsoleWindow newConsole = new ConsoleWindow(arrowButton_size);
+            var newConsole = new ConsoleWindow(arrowButton_size);
             newConsole.AddQuickSettings(qSettingsHeight);
 
             ParentGrid.Children.Add(newConsole.UIElement);
@@ -149,12 +158,11 @@ namespace ConsoleWindow {
         }
         private void CreateNewConsole() {
             // Safely Create a new ConsoleWindow
-            ConsoleWindow newConsole = new ConsoleWindow(arrowButton_size);
+            var newConsole = new ConsoleWindow(arrowButton_size);
             newConsole.AddQuickSettings(qSettingsHeight);
 
             ParentGrid.Children.Add(newConsole.UIElement);
-            RowDefinition rowDefinition = new RowDefinition();
-            rowDefinition.Height = new GridLength(100);
+            RowDefinition rowDefinition = new() { Height = new GridLength(100) };
             ParentGrid.RowDefinitions.Add(rowDefinition);
 
             Grid.SetRow(newConsole.UIElement, ParentGrid.RowDefinitions.Count - 1);
@@ -166,10 +174,10 @@ namespace ConsoleWindow {
         private void GenerateClientbuttonMenus() {
             // First Degree
             // Initilization 
-            fileMenu = new DropDownMenu(FileButton);
-            windowMenu = new DropDownMenu(WindowsButton);
-            viewMenu = new DropDownMenu(ViewButton);
-            editMenu = new DropDownMenu(EditButton);
+            fileMenu.Instanciate(windowHandle.GetClientButton("File").Item1);
+            editMenu.Instanciate(windowHandle.GetClientButton("Edit").Item1);
+            viewMenu.Instanciate(windowHandle.GetClientButton("View").Item1);
+            windowMenu.Instanciate(windowHandle.GetClientButton("Window").Item1);
 
             clientButtonUnfoldMenus.Add(fileMenu.UIElement);
             clientButtonUnfoldMenus.Add(viewMenu.UIElement);
@@ -183,18 +191,18 @@ namespace ConsoleWindow {
             }
 
             // Adding settings
-            fileMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight).SetName("Load"));
-            fileMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight).SetName("Safe"));
-            viewMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight).SetName("Increase Font Size").SetKeyboardShortcut("Strg + Mousewheel Up").AddCommand(MainConsole.IncreaseConsoleFont));
-            viewMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight).SetName("Decrease Font Size").SetKeyboardShortcut("Strg + Mousewheel Down").AddCommand(MainConsole.DecreaseConsoleFont));
-            editMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight).SetName("Search and Replace").SetKeyboardShortcut("Strg + F"));
-            windowMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight).SetName("Add new Console").SetKeyboardShortcut("Strg + N").AddCommand(CreateNewConsole));
+            fileMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight, fileMenu).SetName("Load"));
+            fileMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight, fileMenu).SetName("Safe"));
+            viewMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight, viewMenu).SetName("Increase Font Size").SetKeyboardShortcut("Strg + Mousewheel Up").AddCommand(MainConsole.IncreaseConsoleFont));
+            viewMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight, viewMenu).SetName("Decrease Font Size").SetKeyboardShortcut("Strg + Mousewheel Down").AddCommand(MainConsole.DecreaseConsoleFont));
+            editMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight, editMenu).SetName("Search and Replace").SetKeyboardShortcut("Strg + F"));
+            windowMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight, windowMenu).SetName("Add new Console").SetKeyboardShortcut("Strg + N").AddCommand(CreateNewConsole));
 
 
             // Second degree
             // Initilization 
-            saveMenu = new DropDownMenu(fileMenu.GetOption("Safe"), fileMenu);
-            loadMenu = new DropDownMenu(fileMenu.GetOption("Load"), fileMenu);
+            saveMenu.Instanciate(fileMenu.GetOption("Safe"), fileMenu);
+            loadMenu.Instanciate(fileMenu.GetOption("Load"), fileMenu);
 
             clientButtonUnfoldMenus.Add(saveMenu.UIElement);
             clientButtonUnfoldMenus.Add(loadMenu.UIElement);
@@ -206,33 +214,17 @@ namespace ConsoleWindow {
             }
 
             // Adding settings
-            saveMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight).SetName("Save to default file").SetKeyboardShortcut("Strg + S + D").AddCommand(MainConsole.SaveDefault));
-            saveMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight).SetName("Save to specific file").SetKeyboardShortcut("Strg + S + F").AddCommand(MainConsole.SaveSpecific));
-            loadMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight).SetName("Load from default file").SetKeyboardShortcut("Strg + O + D").AddCommand(MainConsole.Load));
+            saveMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight, saveMenu).SetName("Save to default file").SetKeyboardShortcut("Strg + S + D").AddCommand(MainConsole.SaveDefault));
+            saveMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight, saveMenu).SetName("Save to specific file").SetKeyboardShortcut("Strg + S + F").AddCommand(MainConsole.SaveSpecific));
+            loadMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight, loadMenu).SetName("Load from default file").SetKeyboardShortcut("Strg + O + D").AddCommand(MainConsole.Load));
             fileMenu.GetOption("Safe").AddDropdownMenu(saveMenu);
             fileMenu.GetOption("Load").AddDropdownMenu(loadMenu);
-        }
-
-        private void PrepareUIElements() {
-            IconSymbol icon = new IconSymbol(@"D:\Programmmieren\__DebugLibrary\VSCode\ConsoleWindow\Zeichnung.png", iconSize.Item1, iconSize.Item1);
-            HandleBar.Children.Insert(0, icon.UIElement);
-        }
-        private void UpdateSystemButtonSize() {
-            ChildGrid_1.ColumnDefinitions[1].Width = new GridLength(3 * systemButton_size);
-        }
-        private void SetTitleBar() {
-            foreach (UIElement element in SystemButtons.Children) {
-                WindowChrome.SetIsHitTestVisibleInChrome(element, true);
-            }
-            foreach (UIElement element in HandleBar.Children) {
-                WindowChrome.SetIsHitTestVisibleInChrome(element, true);
-            }
         }
 
         #region System
 
 
-        private void StartTimer_() {
+        private static void StartTimer_() {
             // Initiate the PipeClient
             pipeClient = new NamedPipeClientStream(".", pipeName, PipeDirection.In);
             pipeClient.Connect();
@@ -244,8 +236,9 @@ namespace ConsoleWindow {
             executionSymbol = reader.ReadLine();
 
             bool reading = false;
-            timer = new DispatcherTimer();
-            timer.Interval = intervall;
+            timer = new() {
+                Interval = intervall
+            };
             timer.Tick += async (sender, e) => {
                 if (reading) {
                     return;
@@ -299,7 +292,7 @@ namespace ConsoleWindow {
         /// Executes the <paramref name="command"/>.
         /// </summary>
         /// <param name="command"></param>
-        private void Execute(string command, string parameter) {
+        private static void Execute(string command, string parameter) {
             switch (command) {
 
                 case "Kill":
@@ -325,7 +318,7 @@ namespace ConsoleWindow {
         /// Shuts down the Application
         /// </summary>
         /// <exception cref="ArgumentException"></exception>
-        private void ShutDown() {
+        private static void ShutDown() {
             if (runType == ProgramRunType.DebugLibrary) {
                 try {
                     timer.Stop();
@@ -334,7 +327,6 @@ namespace ConsoleWindow {
                 }
                 catch (IOException ex) {
                     Application.Current.Shutdown();
-                    throw new ArgumentException($"An Error occured while trying to shut down the ConsoleWindowApplication: {ex}");
                 }
             }
 
@@ -372,119 +364,6 @@ namespace ConsoleWindow {
         }
         #endregion
 
-        #region System Buttons
-        private void CloseButton_Click(object sender, RoutedEventArgs e) {
-            ShutDown();
-        }
-        private void MaximizeButton_Click(object sender, RoutedEventArgs e) {
-            AdjustWindowSize();
-        }
-        private void MinimizeButton_Click(object sender, RoutedEventArgs e) {
-            this.WindowState = WindowState.Minimized;
-        }
-        private void AdjustWindowSize() {
-            if (this.WindowState == WindowState.Maximized) {
-                this.WindowState = WindowState.Normal;
-                ParentGrid.Margin = new Thickness(0, 0, 0, 0);
-            }
-            else {
-                this.WindowState = WindowState.Maximized;
-                ParentGrid.Margin = new Thickness(maximizedFix, maximizedFix, maximizedFix, maximizedFix);
-            }
-        }
-        #endregion
-
-        #region Client buttons
-        private void EditButton_Click(object sender, RoutedEventArgs e) {
-            ActivateMenuOnClick(editMenu);
-        }
-
-        private void FileButton_Click(object sender, RoutedEventArgs e) {
-            ActivateMenuOnClick(fileMenu);
-        }
-
-        private void ViewButton_Click(object sender, RoutedEventArgs e) {
-            ActivateMenuOnClick(viewMenu);
-        }
-        private void View_Option1_MouseDown(object sender, MouseButtonEventArgs e) {
-            MainConsole.DecreaseConsoleFont();
-        }
-        private void View_Option2_MouseDown(object sender, MouseButtonEventArgs e) {
-            MainConsole.IncreaseConsoleFont();
-        }
-
-        private void WindowsButton_Click(object sender, RoutedEventArgs e) {
-            ActivateMenuOnClick(windowMenu);
-        }
-
-        private void Windows_Options1_MouseDown(object sender, MouseButtonEventArgs e) {
-            NewConsoleAtBottom();
-        }
-        private void NewConsoleAtBottom() {
-            ConsoleWindow newConsole = new ConsoleWindow(arrowButton_size);
-            newConsole.AddQuickSettings(qSettingsHeight);
-
-            RowDefinition rowDefinition = new RowDefinition();
-            rowDefinition.Height = new GridLength(100, GridUnitType.Pixel);
-            ParentGrid.RowDefinitions.Add(rowDefinition);
-            ParentGrid.Children.Add(newConsole.UIElement);
-            Grid.SetRow(newConsole.UIElement, ParentGrid.RowDefinitions.Count - 1);
-            Grid.SetColumn(newConsole.UIElement, ParentGrid.ColumnDefinitions.Count - 1);
-
-            newConsole.WriteLine("Hello World!");
-        }
-
-
-        // Helper Methods
-        private static bool isUsingClientButtons = false;
-        private void ActivateClientButton(DropDownMenu element) {
-            element.UIElement.Visibility = Visibility.Visible;
-        }
-        private void DeactivateAllClientButtons() {
-            foreach (Border element in clientButtonUnfoldMenus) {
-                element.Visibility = Visibility.Collapsed;
-            }
-        }
-        private void Button_MouseEnter(object sender, MouseEventArgs e) {
-            if (!isUsingClientButtons) return;
-
-            Button button = sender as Button;
-            switch (button.Tag.ToString()) {
-                case "View":
-                    DeactivateAllClientButtons();
-                    ActivateClientButton(viewMenu);
-                    break;
-
-                case "File":
-                    DeactivateAllClientButtons();
-                    ActivateClientButton(fileMenu);
-                    break;
-
-                case "Edit":
-                    DeactivateAllClientButtons();
-                    ActivateClientButton(editMenu);
-                    break;
-
-                case "Windows":
-                    DeactivateAllClientButtons();
-                    ActivateClientButton(windowMenu);
-                    break;
-            }
-        }
-        private void ActivateMenuOnClick(DropDownMenu element) {
-            if (isUsingClientButtons) {
-                DeactivateAllClientButtons();
-                isUsingClientButtons = false;
-            }
-            else {
-                isUsingClientButtons = true;
-                ActivateClientButton(element);
-            }
-        }
-        #endregion
-
-
-
         private void Canvas_SizeChanged(object sender, SizeChangedEventArgs e) {
             ParentGrid.Height = MainCanvas.ActualHeight;
             ParentGrid.Width = MainCanvas.ActualWidth;
@@ -493,17 +372,17 @@ namespace ConsoleWindow {
 
 
         class QuickSettings {
-            private Grid grid = new Grid();
+            private Grid grid = new();
             public UIElement UIElement => grid;
 
-            private StackPanel stackPanel = new StackPanel();
+            private StackPanel stackPanel = new();
 
-            private TextBlock lineCounter = new TextBlock();
+            private TextBlock lineCounter = new();
             public TextBlock LineCounter { get => lineCounter; }
 
-            private Button clearAllTextButton = new Button();
-            private Button deleteLineButton = new Button();
-            private Button fillConsoleButton = new Button();
+            private Button clearAllTextButton = new();
+            private Button deleteLineButton = new();
+            private Button fillConsoleButton = new();
 
             private ConsoleWindow console;
 
@@ -552,73 +431,20 @@ namespace ConsoleWindow {
             }
         }
 
-        class IconSymbol {
-            private Grid grid = new Grid();
-            private Image image = new Image();
-            public UIElement UIElement => grid;
-
-            public IconSymbol(string path, double width, double height) {
-                image.Source = new BitmapImage(new Uri(path, UriKind.RelativeOrAbsolute));
-                image.HorizontalAlignment = HorizontalAlignment.Stretch;
-                image.VerticalAlignment = VerticalAlignment.Stretch;
-                image.Width = width;
-                image.Height = height;
-
-                ColumnDefinition c = new ColumnDefinition();
-                c.Width = new GridLength(1, GridUnitType.Star);
-                grid.ColumnDefinitions.Add(c);
-
-                RowDefinition r = new RowDefinition();
-                r.Height = new GridLength(1, GridUnitType.Star);
-                grid.RowDefinitions.Add(r);
-
-                grid.Children.Add(image);
-                Grid.SetColumn(image, 0);
-                Grid.SetRow(image, 0);
-            }
-            public IconSymbol(double width, double height) {
-                image.HorizontalAlignment = HorizontalAlignment.Stretch;
-                image.VerticalAlignment = VerticalAlignment.Stretch;
-                image.Width = width;
-                image.Height = height;
-
-                ColumnDefinition c = new ColumnDefinition();
-                c.Width = new GridLength(1, GridUnitType.Star);
-                grid.ColumnDefinitions.Add(c);
-
-                RowDefinition r = new RowDefinition();
-                r.Height = new GridLength(1, GridUnitType.Star);
-                grid.RowDefinitions.Add(r);
-
-                grid.Children.Add(image);
-                Grid.SetColumn(image, 0);
-                Grid.SetRow(image, 0);
-            }
-
-
-            public void SetGridPosition(Grid parent, int row, int column) {
-                if (grid.Parent.GetType() == typeof(Grid)) {
-                    parent.Children.Add(grid);
-                    Grid.SetColumn(grid, column);
-                    Grid.SetRow(grid, row);
-                }
-            }
-        }
-
         class ConsoleWindow {
-            private Border border = new Border();
+            private Border border = new();
             public UIElement UIElement => border;
 
-            public string defaultPath = null;
+            public string ?defaultPath;
 
-            private List<string> content = new List<string>();
-            private Grid parentGrid = new Grid();
-            private Grid topGrid = new Grid();
-            private Grid bottomGrid = new Grid();
-            private ConsoleText text;
+            private List<string> content = new();
+            private Grid parentGrid = new();
+            private Grid topGrid = new();
+            private Grid bottomGrid = new();
+            private ConsoleText ?text;
             public TextBox Text => text.UIElement;
-            private ConsoleScrollbar scrollbar;
-            private QuickSettings settings;
+            private ConsoleScrollbar ?scrollbar;
+            private QuickSettings ?settings;
             private double arrowButtonWidth;
 
 
@@ -667,40 +493,48 @@ namespace ConsoleWindow {
                 Grid.SetRow(scrollbar.UIElement, 0);
             }
             private void InitParentGrid() {
-                ColumnDefinition c = new ColumnDefinition();
-                c.Width = new GridLength(1, GridUnitType.Star);
+                ColumnDefinition c = new() {
+                    Width = new GridLength(1, GridUnitType.Star)
+                };
 
                 // Top/ConsoleAndScrollbar Grid
-                RowDefinition r1 = new RowDefinition();
-                r1.Height = new GridLength(1, GridUnitType.Star);
+                RowDefinition r1 = new() {
+                    Height = new GridLength(1, GridUnitType.Star)
+                };
 
                 // Bottom/qSettings Grid
-                RowDefinition r2 = new RowDefinition();
-                r2.Height = new GridLength(0, GridUnitType.Pixel);
+                RowDefinition r2 = new() {
+                    Height = new GridLength(0, GridUnitType.Pixel)
+                };
 
                 parentGrid.ColumnDefinitions.Add(c);
                 parentGrid.RowDefinitions.Add(r1);
                 parentGrid.RowDefinitions.Add(r2);
             }
             private void InitBottomGrid() {
-                ColumnDefinition c1 = new ColumnDefinition();
-                c1.Width = new GridLength(1, GridUnitType.Star);
+                ColumnDefinition c1 = new() {
+                    Width = new GridLength(1, GridUnitType.Star)
+                };
 
-                RowDefinition r1 = new RowDefinition();
-                r1.Height = new GridLength(1, GridUnitType.Star);
+                RowDefinition r1 = new() {
+                    Height = new GridLength(1, GridUnitType.Star)
+                };
 
                 bottomGrid.ColumnDefinitions.Add(c1);
                 bottomGrid.RowDefinitions.Add(r1);
             }
             private void InitTopGrid() {
-                ColumnDefinition c1 = new ColumnDefinition();
-                c1.Width = new GridLength(1, GridUnitType.Star);
+                ColumnDefinition c1 = new() {
+                    Width = new GridLength(1, GridUnitType.Star)
+                };
 
-                ColumnDefinition c2 = new ColumnDefinition();
-                c2.Width = new GridLength(arrowButtonWidth, GridUnitType.Pixel);
+                ColumnDefinition c2 = new() {
+                    Width = new GridLength(arrowButtonWidth, GridUnitType.Pixel)
+                };
 
-                RowDefinition r1 = new RowDefinition();
-                r1.Height = new GridLength(1, GridUnitType.Star);
+                RowDefinition r1 = new() {
+                    Height = new GridLength(1, GridUnitType.Star)
+                };
 
                 topGrid.ColumnDefinitions.Add(c1);
                 topGrid.ColumnDefinitions.Add(c2);
@@ -725,12 +559,12 @@ namespace ConsoleWindow {
 
             public string ContentToString {
                 get {
-                    StringBuilder b = new StringBuilder();
+                    var stringBuilder = new StringBuilder();
                     foreach (var s in content) {
-                        b.Append(s);
-                        b.Append('\n');
+                        stringBuilder.Append(s);
+                        stringBuilder.Append('\n');
                     }
-                    return b.ToString();
+                    return stringBuilder.ToString();
                 }
             }
 
@@ -829,8 +663,9 @@ namespace ConsoleWindow {
                 private ConsoleWindow console;
                 public ConsoleText(ConsoleWindow console) {
                     this.console = console;
-                    textBox = new TextBox();
-                    textBox.Style = Application.Current.Resources["ConsoleStyle"] as Style;
+                    textBox = new() {
+                        Style = Application.Current.Resources["ConsoleStyle"] as Style
+                    };
                     textBox.LayoutUpdated += TextBox_LayoutUpdated;
                     textBox.TextChanged += TextBox_TextChanged;
                 }
@@ -855,13 +690,13 @@ namespace ConsoleWindow {
             }
 
             class ConsoleScrollbar {
-                private Grid grid = new Grid();
-                private Button upArrow = new Button();
-                private Button downArrow = new Button();
-                private Rectangle slider = new Rectangle();
+                private Grid grid = new();
+                private Button upArrow = new();
+                private Button downArrow = new();
+                private Rectangle slider = new();
                 private ConsoleText textBox;
 
-                private DispatcherTimer arrowTimer = new DispatcherTimer();
+                private DispatcherTimer arrowTimer = new();
                 private double activationThreshhold = 0.5;
                 private double arrowTickRate = 0.1;
                 private double arrowWidth;
@@ -903,15 +738,13 @@ namespace ConsoleWindow {
                 private void InitGrid() {
                     grid.VerticalAlignment = VerticalAlignment.Stretch;
 
-                    ColumnDefinition c1 = new ColumnDefinition();
-                    c1.Width = new GridLength(1, GridUnitType.Star);
+                    ColumnDefinition c1 = new() {
+                        Width = new GridLength(1, GridUnitType.Star)
+                    };
 
-                    RowDefinition r1 = new RowDefinition();
-                    r1.Height = new GridLength(arrowWidth, GridUnitType.Pixel);
-                    RowDefinition r2 = new RowDefinition();
-                    r2.Height = new GridLength(1, GridUnitType.Star);
-                    RowDefinition r3 = new RowDefinition();
-                    r3.Height = new GridLength(arrowWidth, GridUnitType.Pixel);
+                    RowDefinition r1 = new() { Height = new GridLength(arrowWidth, GridUnitType.Pixel) };
+                    RowDefinition r2 = new() { Height = new GridLength(1, GridUnitType.Star) };
+                    RowDefinition r3 = new() { Height = new GridLength(arrowWidth, GridUnitType.Pixel) };
 
                     grid.ColumnDefinitions.Add(c1);
                     grid.RowDefinitions.Add(r1);
@@ -925,8 +758,7 @@ namespace ConsoleWindow {
                     textBox.UIElement.LineUp();
                 }
                 public void UpArrow_PreviewMouseDown(object sender, MouseButtonEventArgs e) {
-                    arrowTimer = new DispatcherTimer();
-                    arrowTimer.Interval = TimeSpan.FromSeconds(activationThreshhold);
+                    arrowTimer = new() { Interval = TimeSpan.FromSeconds(activationThreshhold) };
                     arrowTimer.Tick += UpArrowTick;
                     arrowTimer.Start();
                 }
@@ -950,8 +782,7 @@ namespace ConsoleWindow {
                     textBox.UIElement.LineDown();
                 }
                 public void DownArrow_PreviewMouseDown(object sender, MouseButtonEventArgs e) {
-                    arrowTimer = new DispatcherTimer();
-                    arrowTimer.Interval = TimeSpan.FromSeconds(activationThreshhold);
+                    arrowTimer = new() { Interval = TimeSpan.FromSeconds(activationThreshhold) };
                     arrowTimer.Tick += DownArrowTick;
                     arrowTimer.Start();
                 }
@@ -994,7 +825,6 @@ namespace ConsoleWindow {
                 public void CompositionTarget_Rendering_Silder(object sender, EventArgs e) {
                     double mousePos = Mouse.GetPosition(Application.Current.MainWindow).Y; // Mouse Position Relative to the window
                     double minHandleHeight_relToTheWindow = systemButton_size + arrowButton_size - maximizedFix;
-                    double mousePosDelta = mousePos - (slider.Margin.Top + minHandleHeight_relToTheWindow); // Mouse Position Relative to the handle 
                     double newY = (mousePos - offsetOnStart) - (minHandleHeight_relToTheWindow); // The New Height of the handle
 
                     double minHeight = 0;
@@ -1047,218 +877,6 @@ namespace ConsoleWindow {
             Bottom,
             Left,
             Top
-        }
-
-        class DropDownMenu {
-            private Point position = new Point(0, 0);
-            public Point Position => position;
-
-            private Border border = new Border();
-            public FrameworkElement UIElement => border;
-            private StackPanel verticalPanel = new StackPanel();
-            private List<MenuOption> options = new List<MenuOption>();
-            public List<MenuOption> Options => options;
-
-            public DropDownMenu(FrameworkElement parent) {
-                Initialize();
-
-                position = Helper.GetAbsolutePosition(parent);
-                position.Y += parent.ActualHeight;
-                border.RenderTransform = new TranslateTransform(position.X, position.Y);
-            }
-
-            public DropDownMenu(MenuOption parentOption, DropDownMenu parentMenu) {
-                Initialize();
-
-                position = parentMenu.Position;
-                position.X += parentOption.UIElement.ActualWidth;
-                position.Y += parentMenu.options.IndexOf(parentOption) * parentOption.UIElement.ActualHeight;
-                border.RenderTransform = new TranslateTransform(position.X, position.Y);
-            }
-            private void Initialize() {
-                verticalPanel.Background = Helper.Color("#2e2e2e");
-                verticalPanel.Orientation = Orientation.Vertical;
-                border.Child = verticalPanel;
-                border.Style = Application.Current.Resources["ClientButtonUnfoldMenu_Style"] as Style;
-            }
-
-            private void UIElement_Loaded(object sender, RoutedEventArgs e) {
-                throw new NotImplementedException();
-            }
-            private void UIElement_LayoutUpdated(object? sender, EventArgs e) {
-                throw new NotImplementedException();
-            }
-
-            public void ToggleVisibility() {
-                if (UIElement.Visibility == Visibility.Visible) {
-                    Hide();
-                }
-                else if (UIElement.Visibility == Visibility.Collapsed) {
-                    Show();
-                }
-            }
-
-            public void Show() => UIElement.Visibility = Visibility.Visible;
-            public void Hide() => UIElement.Visibility = Visibility.Collapsed;
-
-            public void AddOption(MenuOption option) {
-                options.Add(option);
-                verticalPanel.Children.Add(option.UIElement);
-                UpdateLayout();
-            }
-            public MenuOption GetOption(int index) => options[index];
-            public MenuOption GetOption(string name) => options.Find(option => name == option.GetName);
-
-            public void UpdateLayout() {
-                double maxWidth = 0;
-                var grids = verticalPanel.Children.OfType<Grid>();
-
-                //Name
-                maxWidth = grids.Max(g => Helper.GetActualColumnWidth(g, 1));
-                foreach (var grid in grids) {
-                    grid.ColumnDefinitions[1].Width = new GridLength(maxWidth);
-                }
-
-                //Shortcut
-                maxWidth = 0;
-                maxWidth = grids.Max(g => Helper.GetActualColumnWidth(g, 2));
-                foreach (var grid in grids) {
-                    grid.ColumnDefinitions[2].Width = new GridLength(maxWidth);
-                }
-            }
-
-            public class MenuOption {
-                private string name;
-                public string GetName => name;
-
-                private Point position;
-                public Point Position => position;
-
-                private Grid grid = new Grid();
-                public FrameworkElement UIElement => grid;
-
-                public IconSymbol symbol;
-                public TextBlock title = new TextBlock();
-                public TextBlock keyboardShortCut = new TextBlock();
-                public TextBlock arrow = new TextBlock();
-
-                private double height;
-                public double Height => height;
-
-                private double symbolOffset = 3;
-                private DropDownMenu menu;
-
-
-                public MenuOption(double height) {
-                    arrow.Text = " ";
-                    symbol = new IconSymbol(height - symbolOffset * 2, height - symbolOffset * 2);
-                    this.height = height;
-
-                    ColumnDefinition symbolCol = new ColumnDefinition();
-                    symbolCol.Width = new GridLength(height, GridUnitType.Pixel);
-                    grid.ColumnDefinitions.Add(symbolCol);
-
-                    ColumnDefinition nameCol = new ColumnDefinition();
-                    nameCol.Width = new GridLength(1, GridUnitType.Auto);
-                    grid.ColumnDefinitions.Add(nameCol);
-
-                    ColumnDefinition shortcutCol = new ColumnDefinition();
-                    shortcutCol.Width = new GridLength(1, GridUnitType.Auto);
-                    grid.ColumnDefinitions.Add(shortcutCol);
-
-                    ColumnDefinition arrowCol = new ColumnDefinition();
-                    arrowCol.Width = new GridLength(height, GridUnitType.Pixel);
-                    grid.ColumnDefinitions.Add(arrowCol);
-
-
-                    Helper.SetChildInGrid(grid, symbol.UIElement, 0, 0);
-                    Helper.SetChildInGrid(grid, title, 0, 1);
-                    Helper.SetChildInGrid(grid, keyboardShortCut, 0, 2);
-                    Helper.SetChildInGrid(grid, arrow, 0, 3);
-
-                    grid.MouseEnter += Grid_MouseEnter;
-                    grid.MouseLeave += Grid_MouseLeave;
-                }
-
-                private void Grid_MouseLeave(object sender, MouseEventArgs e) {
-                    grid.Background = Brushes.Transparent;
-                }
-
-                private void Grid_MouseEnter(object sender, MouseEventArgs e) {
-                    grid.Background = Helper.Color("#3d3d3d");
-                }
-
-                public MenuOption AddSymbol(string path) {
-                    symbol = new IconSymbol(path, height - symbolOffset * 2, height - symbolOffset * 2);
-                    return this;
-                }
-                public MenuOption SetName(string nameText) {
-                    name = nameText;
-
-                    title.Margin = new Thickness(15, 0, 0, 0);
-                    title.Text = nameText;
-                    title.Foreground = Brushes.White;
-                    title.VerticalAlignment = VerticalAlignment.Top;
-                    title.HorizontalAlignment = HorizontalAlignment.Left;
-
-                    return this;
-                }
-                public MenuOption SetKeyboardShortcut(string kShortcut) {
-                    keyboardShortCut.Margin = new Thickness(15, 0, 0, 0);
-                    keyboardShortCut.Text = kShortcut;
-                    keyboardShortCut.Foreground = Brushes.White;
-                    keyboardShortCut.VerticalAlignment = VerticalAlignment.Top;
-                    keyboardShortCut.HorizontalAlignment = HorizontalAlignment.Left;
-
-                    return this;
-                }
-                public MenuOption AddDropdownMenu(DropDownMenu menu) {
-                    arrow.Margin = new Thickness(15, 0, 0, 0);
-                    arrow.Text = ">";
-                    arrow.Foreground = Brushes.White;
-                    AddCommand(menu.ToggleVisibility);
-
-                    this.menu = menu;
-
-                    return this;
-                }
-                public MenuOption AddCommand(Action command) {
-                    grid.MouseLeftButtonUp += (sender, e) => command();
-                    return this;
-                }
-            }
-
-        }
-
-        static class Helper {
-            public static void SetChildInGrid(Grid grid, UIElement child, int row, int column) {
-                grid.Children.Add(child);
-                Grid.SetColumn(child, column);
-                Grid.SetRow(child, row);
-            }
-
-            public static Point GetAbsolutePosition(FrameworkElement element) {
-                Point position = element.TransformToAncestor(Application.Current.MainWindow).Transform(new Point(0, 0));
-                return position; 
-            }
-
-            public static double GetActualColumnWidth(Grid grid, int columnIndex) {
-                grid.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-                grid.Arrange(new Rect(0, 0, grid.DesiredSize.Width, grid.DesiredSize.Height));
-                var columnWidth = grid.ColumnDefinitions[columnIndex].ActualWidth;
-                return columnWidth;
-            }
-
-            public static double GetActualRowHeight(Grid grid, int rowIndex) {
-                grid.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-                grid.Arrange(new Rect(0, 0, grid.DesiredSize.Width, grid.DesiredSize.Height));
-                var rowHeight = grid.RowDefinitions[rowIndex].ActualHeight;
-                return rowHeight;
-            }
-
-            public static SolidColorBrush Color(string hex) {
-                return new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex));
-            }
         }
 
     }

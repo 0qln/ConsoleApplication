@@ -80,8 +80,6 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
-
-            <EventSetter Event="MouseEnter" Handler="Button_MouseEnter"/>
         </Style>
 
         <Style x:Key="SystemButtonStyle" TargetType="Button" >
@@ -222,99 +220,6 @@
             Margin="0,0,0,0"
             SizeChanged="Canvas_SizeChanged">
 
-        <!--Client Button Unfold Menus-->
-        <!--File Button-->
-
-        <!--View Button-->
-        <Border x:Name="ViewUnfoldMenu"
-                Style="{StaticResource ClientButtonUnfoldMenu_Style}">
-
-            <StackPanel Orientation="Horizontal"
-                        Background="#3d3d3d">
-
-                <!--Symbol-->
-                <StackPanel Orientation="Vertical">
-                    <Image/>
-
-                    <Image/>
-
-                </StackPanel>
-
-                <!--Name-->
-                <StackPanel Orientation="Vertical">
-                    <Label Content="Increase Font Size"
-                           Style="{StaticResource OptionNameStyle}"
-                           Mouse.MouseDown="View_Option2_MouseDown"/>
-
-                    <Label Content="Decrease Font Size"
-                           Style="{StaticResource OptionNameStyle}"
-                           Mouse.MouseDown="View_Option1_MouseDown"/>
-                </StackPanel>
-
-                <!--Keyboard Shortcut-->
-                <StackPanel Orientation="Vertical">
-                    <Label Content="Strg + Mousewheel Up"
-                           Style="{StaticResource KeyboardShortcutStyle}"
-                           Mouse.MouseDown="View_Option2_MouseDown"/>
-
-                    <Label Content="Strg + Mousewheel Down"
-                           Style="{StaticResource KeyboardShortcutStyle}"
-                           Mouse.MouseDown="View_Option1_MouseDown"/>
-                </StackPanel>
-
-                <!--Arrow if leads to another unfold menu-->
-                <StackPanel Orientation="Vertical">
-                    <Label Content=" "
-                           Style="{StaticResource ArrowStyle}"
-                           Mouse.MouseDown="View_Option2_MouseDown"/>
-
-                    <Label Content=" "
-                           Style="{StaticResource ArrowStyle}"
-                           Mouse.MouseDown="View_Option1_MouseDown"/>
-                </StackPanel>
-            </StackPanel>
-        </Border>
-
-        <!--Window Button-->
-        <Border x:Name="WindowsUnfoldMenu"
-                Style="{StaticResource ClientButtonUnfoldMenu_Style}">
-
-            <StackPanel Orientation="Horizontal"
-                        Background="#3d3d3d">
-
-                <!--Symbol-->
-                <StackPanel Orientation="Vertical">
-                    <Image
-                           Mouse.MouseDown="Windows_Options1_MouseDown"/>
-
-                </StackPanel>
-
-                <!--Name-->
-                <StackPanel Orientation="Vertical">
-                    <Label Content="New Console"
-                           Style="{StaticResource OptionNameStyle}"
-                           Mouse.MouseDown="Windows_Options1_MouseDown"/>
-
-                </StackPanel>
-
-                <!--Keyboard Shortcut-->
-                <StackPanel Orientation="Vertical">
-                    <Label Content="Strg + N"
-                           Style="{StaticResource KeyboardShortcutStyle}"
-                           Mouse.MouseDown="Windows_Options1_MouseDown"/>
-
-                </StackPanel>
-
-                <!--Arrow if leads to another unfold menu-->
-                <StackPanel Orientation="Vertical">
-                    <Label Content=" "
-                           Style="{StaticResource ArrowStyle}"
-                           Mouse.MouseDown="Windows_Options1_MouseDown"/>
-
-                </StackPanel>
-            </StackPanel>
-        </Border>
-
 
         <Grid x:Name="ParentGrid"
               Background="#191919"
@@ -331,96 +236,6 @@
                 <RowDefinition Height="30"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
-
-            <!--Window Handle-->
-            <Grid x:Name="ChildGrid_1"
-                  Grid.Row="0"
-                  Margin="3,3,3,0"
-                  VerticalAlignment="Stretch"
-                  HorizontalAlignment="Stretch">
-
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="90"/>
-                </Grid.ColumnDefinitions>
-
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
-
-                <!--System Buttons-->
-                <Grid x:Name="SystemButtons"
-                        Grid.Column="1"
-                        Background="#1f1f1f"
-                        VerticalAlignment="Center"
-                        HorizontalAlignment="Right">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-
-                    <Button x:Name="MinimizeButton"
-                        Grid.Column="0"
-                        HorizontalAlignment="Stretch"
-                        KeyboardNavigation.IsTabStop="False"
-                        Click="MinimizeButton_Click"
-                        Content="-"
-                        Style="{StaticResource SystemButtonStyle}"/>
-
-                    <Button x:Name="MaximizeButton"
-                        Grid.Column="1"
-                        HorizontalAlignment="Stretch"
-                        KeyboardNavigation.IsTabStop="False"
-                        Click="MaximizeButton_Click"
-                        Content="□"
-                        Style="{DynamicResource SystemButtonStyle}" />
-
-                    <Button x:Name="CloseButton"
-                        Grid.Column="2"
-                        HorizontalAlignment="Stretch"
-                        KeyboardNavigation.IsTabStop="False"
-                        Content="x"
-                        Click="CloseButton_Click"
-                        Style="{DynamicResource SystemButtonStyle}"/>
-
-                </Grid>
-
-                <!--Window Title-->
-                <StackPanel x:Name="HandleBar"
-                  Background="#1f1f1f"
-                  Grid.Column="0"
-                  Orientation="Horizontal">
-
-                    <!--User Buttons-->
-                    <Button x:Name="FileButton"
-                            Style="{StaticResource UserButtons}"
-                            Click="FileButton_Click"
-                            Content="File"
-                            Tag="File"/>
-
-                    <Button x:Name="EditButton"
-                            Style="{StaticResource UserButtons}"
-                            Click="EditButton_Click"
-                            Content="Edit"
-                            Tag="Edit"/>
-
-                    <Button x:Name="ViewButton"
-                            Style="{StaticResource UserButtons}"
-                            Click="ViewButton_Click"
-                            Content="View"
-                            Tag="View"/>
-
-                    <Button x:Name="WindowsButton"
-                            Style="{StaticResource UserButtons}"
-                            Click="WindowsButton_Click"
-                            Content="Windows"
-                            Tag="Windows"/>
-
-                </StackPanel>
-
-            </Grid>
-
 
         </Grid>
     </Canvas>
