@@ -84,8 +84,8 @@ namespace ConsoleWindow {
 
 
 
-                windowHandle = new WindowHandle(Application.Current)
-                .SetParentWindow(ParentGrid)
+                windowHandle = new WindowHandle()
+                .SetParentWindow(MainCanvas)
                 .AddIcon(iconPath)
                 .CreateClientButton("File", fileMenu)
                 .CreateClientButton("Edit", editMenu)
