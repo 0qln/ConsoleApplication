@@ -45,7 +45,6 @@ namespace ConsoleWindow {
         private static StreamReader ?reader;
 
         private static readonly double dropDownMenuHeight = 22;
-        private static readonly double maximizedFix = 5;
         private static readonly double systemButton_size = 30;
         private static readonly double arrowButton_size = 15;
         private static readonly double qSettingsHeight = 30;
@@ -59,15 +58,15 @@ namespace ConsoleWindow {
 
         private static ProgramRunType runType = ProgramRunType.StandAlone;
 
-        private static DropDownMenu fileMenu = new();
-        private static DropDownMenu saveMenu = new();
-        private static DropDownMenu loadMenu = new();
+        private static DropDownMenu fileMenu = new("File");
+        private static DropDownMenu saveMenu = new("Save");
+        private static DropDownMenu loadMenu = new("Load");
 
-        private static DropDownMenu viewMenu = new();
+        private static DropDownMenu viewMenu = new("View");
 
-        private static DropDownMenu editMenu = new();
+        private static DropDownMenu editMenu = new("Edit");
 
-        private static DropDownMenu windowMenu = new();
+        private static DropDownMenu windowMenu = new("Window");
 
 
         public MainWindow() {
@@ -84,18 +83,9 @@ namespace ConsoleWindow {
 
 
 
-                windowHandle = new WindowHandle()
-                .SetParentWindow(MainCanvas)
-                .AddIcon(iconPath)
-                .CreateClientButton("File", fileMenu)
-                .CreateClientButton("Edit", editMenu)
-                .CreateClientButton("View", viewMenu)
-                .CreateClientButton("Window", windowMenu);
-
+                windowHandle = new WindowHandle().SetParentWindow(MainCanvas).AddIcon(iconPath);
                 GenerateClientbuttonMenus();
-
                 windowHandle.ActivateAllClientButtons();
-
                 windowHandle.SetWindowChromActiveAll();
             };
         }
@@ -173,52 +163,30 @@ namespace ConsoleWindow {
 
         private void GenerateClientbuttonMenus() {
             // First Degree
-            // Initilization 
-            fileMenu.Instanciate(windowHandle.GetClientButton("File").Item1);
-            editMenu.Instanciate(windowHandle.GetClientButton("Edit").Item1);
-            viewMenu.Instanciate(windowHandle.GetClientButton("View").Item1);
-            windowMenu.Instanciate(windowHandle.GetClientButton("Window").Item1);
+            windowHandle.CreateClientButton(fileMenu);
+            windowHandle.CreateClientButton(editMenu);
+            windowHandle.CreateClientButton(viewMenu);
+            windowHandle.CreateClientButton(windowMenu);
 
-            clientButtonUnfoldMenus.Add(fileMenu.UIElement);
-            clientButtonUnfoldMenus.Add(viewMenu.UIElement);
-            clientButtonUnfoldMenus.Add(editMenu.UIElement);
-            clientButtonUnfoldMenus.Add(windowMenu.UIElement);
-
-            foreach (var menu in clientButtonUnfoldMenus) {
-                if (!MainCanvas.Children.Contains(menu)) {
-                    MainCanvas.Children.Add(menu);
-                }
-            }
-
-            // Adding settings
-            fileMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight, fileMenu).SetName("Load"));
-            fileMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight, fileMenu).SetName("Safe"));
-            viewMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight, viewMenu).SetName("Increase Font Size").SetKeyboardShortcut("Strg + Mousewheel Up").AddCommand(MainConsole.IncreaseConsoleFont));
-            viewMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight, viewMenu).SetName("Decrease Font Size").SetKeyboardShortcut("Strg + Mousewheel Down").AddCommand(MainConsole.DecreaseConsoleFont));
-            editMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight, editMenu).SetName("Search and Replace").SetKeyboardShortcut("Strg + F"));
-            windowMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight, windowMenu).SetName("Add new Console").SetKeyboardShortcut("Strg + N").AddCommand(CreateNewConsole));
+            fileMenu.AddOption(fileMenu.NewOption("Load"));
+            fileMenu.AddOption(fileMenu.NewOption("Safe"));
+            viewMenu.AddOption(fileMenu.NewOption("Increase Font Size").SetKeyboardShortcut("Strg + Mousewheel Up").AddCommand(MainConsole.IncreaseConsoleFont));
+            viewMenu.AddOption(fileMenu.NewOption("Decrease Font Size").SetKeyboardShortcut("Strg + Mousewheel Down").AddCommand(MainConsole.DecreaseConsoleFont));
+            editMenu.AddOption(fileMenu.NewOption("Search and Replace").SetKeyboardShortcut("Strg + F"));
+            windowMenu.AddOption(fileMenu.NewOption("Add new Console").SetKeyboardShortcut("Strg + N").AddCommand(CreateNewConsole));
 
 
             // Second degree
-            // Initilization 
-            saveMenu.Instanciate(fileMenu.GetOption("Safe"), fileMenu);
-            loadMenu.Instanciate(fileMenu.GetOption("Load"), fileMenu);
+            saveMenu.Instanciate(fileMenu.GetOption("Safe")!, fileMenu);
+            loadMenu.Instanciate(fileMenu.GetOption("Load")!, fileMenu);
+            saveMenu.SetCanvas(MainCanvas); 
+            loadMenu.SetCanvas(MainCanvas); 
 
-            clientButtonUnfoldMenus.Add(saveMenu.UIElement);
-            clientButtonUnfoldMenus.Add(loadMenu.UIElement);
-
-            foreach (var menu in clientButtonUnfoldMenus) {
-                if (!MainCanvas.Children.Contains(menu)) {
-                    MainCanvas.Children.Add(menu);
-                }
-            }
-
-            // Adding settings
-            saveMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight, saveMenu).SetName("Save to default file").SetKeyboardShortcut("Strg + S + D").AddCommand(MainConsole.SaveDefault));
-            saveMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight, saveMenu).SetName("Save to specific file").SetKeyboardShortcut("Strg + S + F").AddCommand(MainConsole.SaveSpecific));
-            loadMenu.AddOption(new DropDownMenu.MenuOption(dropDownMenuHeight, loadMenu).SetName("Load from default file").SetKeyboardShortcut("Strg + O + D").AddCommand(MainConsole.Load));
-            fileMenu.GetOption("Safe").AddDropdownMenu(saveMenu);
-            fileMenu.GetOption("Load").AddDropdownMenu(loadMenu);
+            saveMenu.AddOption(fileMenu.NewOption("Save to default file").SetKeyboardShortcut("Strg + S + D").AddCommand(MainConsole.SaveDefault));
+            saveMenu.AddOption(fileMenu.NewOption("Save to specific file").SetKeyboardShortcut("Strg + S + F").AddCommand(MainConsole.SaveSpecific));
+            loadMenu.AddOption(fileMenu.NewOption("Load from default file").SetKeyboardShortcut("Strg + O + D").AddCommand(MainConsole.Load));
+            fileMenu.GetOption("Safe")!.AddDropdownMenu(saveMenu);
+            fileMenu.GetOption("Load")!.AddDropdownMenu(loadMenu);
         }
 
         #region System
@@ -455,7 +423,7 @@ namespace ConsoleWindow {
                 InitGrid();
 
                 border.Child = parentGrid;
-                border.BorderBrush = Helper.Color("#707070");
+                border.BorderBrush = Helper.StringToSolidColorBrush("#707070");
                 border.BorderThickness = new Thickness(1);
                 border.CornerRadius = new CornerRadius(0);
             }
@@ -725,7 +693,7 @@ namespace ConsoleWindow {
 
                     slider.HorizontalAlignment = HorizontalAlignment.Center;
                     slider.VerticalAlignment = VerticalAlignment.Top;
-                    slider.Fill = Helper.Color("#2e2e2e");
+                    slider.Fill = Helper.StringToSolidColorBrush("#2e2e2e");
                     slider.MouseLeftButtonDown += Slider_MouseLeftButtonDown;
                     slider.MouseLeftButtonUp += Slider_MouseLeftButtonUp;
                     slider.Width = arrowWidth;
@@ -812,7 +780,7 @@ namespace ConsoleWindow {
 
                     isScrolling = true;
                     double mousePos = Mouse.GetPosition(Application.Current.MainWindow).Y; // Mouse Position Relative to the window
-                    double minHandleHeight_relToTheWindow = systemButton_size + arrowButton_size - maximizedFix;
+                    double minHandleHeight_relToTheWindow = systemButton_size + arrowButton_size;
                     double mousePosDelta = mousePos - (slider.Margin.Top + minHandleHeight_relToTheWindow); // Mouse Position Relative to the handle 
                     offsetOnStart = mousePosDelta;
                 }
@@ -824,7 +792,7 @@ namespace ConsoleWindow {
                 }
                 public void CompositionTarget_Rendering_Silder(object sender, EventArgs e) {
                     double mousePos = Mouse.GetPosition(Application.Current.MainWindow).Y; // Mouse Position Relative to the window
-                    double minHandleHeight_relToTheWindow = systemButton_size + arrowButton_size - maximizedFix;
+                    double minHandleHeight_relToTheWindow = systemButton_size + arrowButton_size;
                     double newY = (mousePos - offsetOnStart) - (minHandleHeight_relToTheWindow); // The New Height of the handle
 
                     double minHeight = 0;
