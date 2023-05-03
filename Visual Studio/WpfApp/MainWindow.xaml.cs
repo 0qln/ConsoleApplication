@@ -330,6 +330,35 @@ namespace ConsoleWindow {
 
             return null;
         }
+        public string ShowImagePickerDialog() {
+            var openFileDialog = new OpenFileDialog {
+                Title = "Select an image",
+                Filter = "Image files (*.png;*.jpeg;*.jpg;*.gif)|*.png;*.jpeg;*.jpg;*.gif|All files (*.*)|*.*",
+                FileName = "Image Selection",
+                CheckFileExists = true,
+                CheckPathExists = true,
+                ReadOnlyChecked = true,
+                Multiselect = false,
+                ValidateNames = true,
+                DereferenceLinks = true,
+                ShowReadOnly = false,
+                AddExtension = true,
+                RestoreDirectory = true,
+                InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
+                CustomPlaces = null,
+            };
+
+            // Set the ImagePicker option
+            openFileDialog.ShowDialog(System.Windows.Application.Current.MainWindow);
+
+            // Get the selected image path
+            string selectedImagePath = openFileDialog.FileName;
+            if (!string.IsNullOrEmpty(selectedImagePath) && File.Exists(selectedImagePath)) {
+                return selectedImagePath;
+            }
+
+            return "";
+        }
         #endregion
 
         private void Canvas_SizeChanged(object sender, SizeChangedEventArgs e) {
